@@ -1,6 +1,9 @@
 name: Editor PR checks
 
 on:
+  push:
+    branches:
+      - feature/editor-modes
   pull_request:
     branches:
       - master
