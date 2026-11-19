@@ -124,9 +124,7 @@ function useMarkdownFormatter({ textareaRef, setContent, contentRef, wysiwygRef 
         cursorOffset = selectedText ? formattedText.length : 2;
         break;
       case "hr":
-        formattedText = "
----
-";
+        formattedText = "\n---\n";
         cursorOffset = formattedText.length;
         break;
       case "link":
