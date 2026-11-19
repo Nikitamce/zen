@@ -268,16 +268,41 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
     return (
       <div className="notes-editor-live-preview">
-        <textarea className="notes-editor-live-source" placeholder="Write here..." spellCheck={spellcheckValue}
-          ref={textareaRef} value={content} onInput={handleContentInput} />
         <div className="notes-editor-live-rendered notes-editor-rendered"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: false, hasClickableTasks: false }) }}
-          aria-hidden="true" />
+          onClick={handleLivePreviewClick}
+        />
+        <textarea className="notes-editor-live-source" placeholder="Write here..." spellCheck={spellcheckValue}
+          ref={textareaRef} value={content} onInput={handleContentInput} aria-label="Markdown source" />
       </div>
     );
   }
 
-  function handleTextAreaHeight() {
+  function handleLivePreviewClick(e) {
+    const preview = e.currentTarget;
+    const box = preview.getBoundingClientRect();
+    const scrollY = preview.scrollTop || 0;
+    const x = e.clientX - box.left;
+    const y = e.clientY - box.top + scrollY;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // The live preview visually overlays the Markdown textarea. Clicking a
+    // visible line positions the caret in the matching source line.
+    const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 24;
+    const lineIndex = Math.max(0, Math.floor(y / lineHeight));
+    const lines = contentValueRef.current.split("\n");
+    const safeLineIndex = Math.min(lineIndex, Math.max(0, lines.length - 1));
+    let position = 0;
+    for (let i = 0; i < safeLineIndex; i++) position += lines[i].length + 1;
+    const line = lines[safeLineIndex] || "";
+    const characterIndex = Math.min(line.length, Math.max(0, Math.floor(x / 8)));
+    position += characterIndex;
+    textarea.focus();
+    textarea.setSelectionRange(position, position);
+  }
+
+function handleTextAreaHeight() {
     if (textareaRef.current === null) {
       return;
     }
