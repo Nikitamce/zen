@@ -65,6 +65,15 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
     event.preventDefault();
   }
 
+  function handleEditorClick(event) {
+    const link = event.target.closest("a");
+    if (link && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+      // While editing, a normal click should place the caret rather than
+      // navigating away and losing the current draft.
+      event.preventDefault();
+    }
+  }
+
   function setEditorElement(element) {
     editorRef.current = element;
     if (onEditorRef) onEditorRef(element);
@@ -106,6 +115,7 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
         spellCheck={spellCheck}
         ref={setEditorElement}
         onInput={handleInput}
+        onClick={handleEditorClick}
         role="textbox"
         aria-multiline="true"
         aria-label="Formatted note editor"
