@@ -140,7 +140,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   useEffect(() => {
     handleTextAreaHeight();
-  }, [content, isEditable]);
+  }, [content, isEditable, editorMode]);
 
   const handleSaveClick = useCallback(() => {
     const currentTitle = titleRef.current?.textContent || "";
