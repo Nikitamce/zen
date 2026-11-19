@@ -1,0 +1,45 @@
+name: Editor PR checks
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.css"
+      - ".github/workflows/editor-checks.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install esbuild
+        run: go install github.com/evanw/esbuild/cmd/esbuild@latest
+
+      - name: Bundle frontend
+        run: |
+          "$(go env GOPATH)/bin/esbuild" index.js --bundle --minify --format=esm --outfile=assets/bundle.js --loader:.js=jsx --jsx-factory=h --jsx-fragment=Fragment
+
+      - name: Run Go tests
+        run: go test --tags "fts5" ./...
+
+      - name: Run JavaScript tests
+        run: node --test 'commons/**/*.test.js' 'features/**/*.test.js'
+
+      - name: Build Go application
+        run: go build --tags "fts5" .
