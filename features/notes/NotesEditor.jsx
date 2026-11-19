@@ -51,6 +51,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const textareaRef = useRef(null);
   const contentRef = useRef(null);
   const editorRef = useRef(null);
+  const contentValueRef = useRef(content);
+  contentValueRef.current = content;
 
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
@@ -136,7 +138,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   const handleSaveClick = useCallback(() => {
     const currentTitle = titleRef.current?.textContent || "";
-    const currentContent = textareaRef.current?.value || content;
+    const currentContent = contentValueRef.current;
 
     const note = {
       title: currentTitle,
@@ -212,18 +214,23 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   }
 
   function handleContentInput(e) {
+    contentValueRef.current = e.target.value;
     setContent(e.target.value);
     handleTextAreaHeight();
     scheduleAutoSave();
   }
 
   function handleModeChange(nextMode) {
+    const latestContent = textareaRef.current?.value ?? contentValueRef.current;
+    contentValueRef.current = latestContent;
+    setContent(latestContent);
     setEditorMode(nextMode);
     EditorModePreferences.setMode(nextMode);
   }
 
   function handleWysiwygInput(e) {
     const nextMarkdown = htmlToMarkdown(e.currentTarget);
+    contentValueRef.current = nextMarkdown;
     setContent(nextMarkdown);
     scheduleAutoSave();
   }
@@ -374,7 +381,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function buildNoteMarkdown() {
     const currentTitle = titleRef.current?.textContent || "";
-    const currentContent = textareaRef.current?.value || content;
+    const currentContent = contentValueRef.current;
 
     if (currentTitle.trim() === "") {
       return currentContent;
