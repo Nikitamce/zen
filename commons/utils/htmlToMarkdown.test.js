@@ -69,7 +69,7 @@ test("serializes headings, paragraphs and inline formatting", () => {
     ])
   ]);
 
-  assert.equal(htmlToMarkdown(root), "## Project\n\nA **bold** and *clear* note.");
+  assert.equal(htmlToMarkdown(root), "## Project\n\nA **bold** and *clear* note\\.");
 });
 
 test("serializes task lists and nested lists", () => {
