@@ -16,6 +16,38 @@ const COMMANDS = [
   { label: "—", title: "Horizontal rule", command: "insertHorizontalRule" }
 ];
 
+function sanitizeEditorContent(root) {
+  root.querySelectorAll("script, style, iframe, object, embed, form, video, audio").forEach(node => node.remove());
+
+  root.querySelectorAll("*").forEach(element => {
+    Array.from(element.attributes).forEach(attribute => {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on") || name === "srcdoc") {
+        element.removeAttribute(attribute.name);
+      }
+    });
+
+    if (element.tagName === "A") {
+      const href = element.getAttribute("href") || "";
+      if (!/^(https?:|ftp:|mailto:|tel:|\/|#)/i.test(href)) {
+        element.removeAttribute("href");
+      }
+    }
+
+    if (element.tagName === "IMG") {
+      const src = element.getAttribute("src") || "";
+      const isDataImage = /^data:image\/(gif|png|jpeg|webp);/i.test(src);
+      if (!/^(https?:|\/)/i.test(src) && !isDataImage) {
+        element.removeAttribute("src");
+      }
+    }
+
+    if (element.tagName === "INPUT" && element.type !== "checkbox") {
+      element.remove();
+    }
+  });
+}
+
 export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef }) {
   const editorRef = useRef(null);
   const lastMarkdownRef = useRef(null);
@@ -31,6 +63,7 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
   }, [value]);
 
   function handleInput(event) {
+    sanitizeEditorContent(event.currentTarget);
     const nextMarkdown = htmlToMarkdown(event.currentTarget);
     lastMarkdownRef.current = nextMarkdown;
     onChange(nextMarkdown);
