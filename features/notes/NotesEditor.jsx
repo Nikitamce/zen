@@ -53,8 +53,6 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const editorRef = useRef(null);
   const contentValueRef = useRef(content);
   contentValueRef.current = content;
-  const contentValueRef = useRef(content);
-  contentValueRef.current = content;
 
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
@@ -554,6 +552,7 @@ function handleTextAreaHeight() {
       setTitle(templateTitle);
     }
 
+    contentValueRef.current = templateContent;
     setContent(templateContent);
 
     if (templateTags && templateTags.length > 0) {
