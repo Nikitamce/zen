@@ -666,42 +666,24 @@
     box-shadow: var(--shadow-1);
 }
 .notes-editor-live-preview {
-    position: relative;
-    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
 }
-.notes-editor-live-source,
-.notes-editor-live-rendered {
-    box-sizing: border-box;
-    width: 100%;
+.notes-editor-live-source {
     min-height: 240px;
-    margin: 0;
+    resize: vertical;
+    font-family: var(--font-family-code);
+    white-space: pre;
+    overflow: auto;
+}
+.notes-editor-live-rendered {
+    position: static;
+    min-height: 180px;
     padding: var(--spacing-4);
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-1);
-    font: var(--p1);
-    line-height: 1.65;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-.notes-editor-live-source {
-    position: relative;
-    z-index: 2;
-    resize: vertical;
-    color: transparent;
-    caret-color: var(--text-primary);
-    background: transparent;
-    -webkit-text-fill-color: transparent;
-}
-.notes-editor-live-source::selection {
-    background: rgb(120 160 220 / 0.35);
-    -webkit-text-fill-color: transparent;
-}
-.notes-editor-live-rendered {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    overflow: hidden;
+    pointer-events: auto;
 }
 .notes-editor-live-rendered > :first-child { margin-top: 0; }
 .notes-editor-live-rendered > :last-child { margin-bottom: 0; }
@@ -737,4 +719,31 @@
 @media screen and (max-width: 700px) {
     .notes-editor-split-view { grid-template-columns: minmax(0, 1fr); }
     .notes-editor-live-source, .notes-editor-live-rendered { min-height: 300px; }
+}
+
+.notes-editor-wysiwyg-wrap {
+    margin: var(--spacing-3) 0;
+}
+.notes-editor-wysiwyg-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-1);
+}
+.notes-editor-wysiwyg-toolbar button {
+    min-width: 30px;
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: var(--radius-1);
+    background: transparent;
+    color: var(--text-primary);
+    font: var(--xs);
+    cursor: pointer;
+}
+.notes-editor-wysiwyg-toolbar button:hover {
+    background: var(--neutral-100);
 }
