@@ -25,7 +25,7 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
 
     editorRef.current.innerHTML = renderMarkdown(value, {
       hasCodeCopyButton: false,
-      hasClickableTasks: false
+      hasClickableTasks: true
     });
     lastMarkdownRef.current = value;
   }, [value]);
