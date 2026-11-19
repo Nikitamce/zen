@@ -213,7 +213,10 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
     function handleConfirm(tableMarkdown) {
       closeModal();
-      setContent(beforeText + tableMarkdown + afterText);
+      const nextContent = beforeText + tableMarkdown + afterText;
+      contentValueRef.current = nextContent;
+      setContent(nextContent);
+      scheduleAutoSave();
     }
 
     openModal(<TableEditorModal isEditing={isEditing} selectedText={selectedText} beforeText={beforeText} afterText={afterText} onConfirm={handleConfirm} onCloseClick={() => closeModal()} />);
