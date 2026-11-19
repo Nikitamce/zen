@@ -552,6 +552,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         const length = templateContent.length;
         textareaRef.current.selectionStart = length;
         textareaRef.current.selectionEnd = length;
+        return;
+      }
+
+      if (wysiwygRef.current) {
+        wysiwygRef.current.focus();
+        const range = document.createRange();
+        range.selectNodeContents(wysiwygRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
       }
     }, 0);
   }
