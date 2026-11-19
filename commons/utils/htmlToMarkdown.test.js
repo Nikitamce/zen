@@ -98,7 +98,7 @@ test("serializes fenced code blocks with language labels", () => {
     element("div", { class: "code-block" }, [element("button", {}, []), pre])
   ]);
 
-  assert.equal(htmlToMarkdown(root), "~~~js\nconsole.log(1);\n~~~");
+  assert.equal(htmlToMarkdown(root), "```js\nconsole.log(1);\n```");
 });
 
 test("serializes rendered Markdown tables", () => {
