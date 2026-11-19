@@ -53,6 +53,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const editorRef = useRef(null);
   const contentValueRef = useRef(content);
   contentValueRef.current = content;
+  const contentValueRef = useRef(content);
+  contentValueRef.current = content;
 
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
@@ -86,7 +88,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     noteId: selectedNote?.noteId,
     titleRef,
     textareaRef,
-    tagsRef
+    tagsRef,
+    contentRef: contentValueRef
   });
 
   useRefreshOnTabFocus({
@@ -255,10 +258,22 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       );
     }
 
+    if (editorMode === "wysiwyg") {
+      return (
+        <div className="notes-editor-wysiwyg notes-editor-rendered" contentEditable suppressContentEditableWarning
+          spellCheck={spellcheckValue} onInput={handleWysiwygInput}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: false, hasClickableTasks: false }) }} />
+      );
+    }
+
     return (
-      <div className="notes-editor-wysiwyg notes-editor-rendered" contentEditable suppressContentEditableWarning
-        spellCheck={spellcheckValue} onInput={handleWysiwygInput}
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: false, hasClickableTasks: false }) }} />
+      <div className="notes-editor-live-preview">
+        <textarea className="notes-editor-live-source" placeholder="Write here..." spellCheck={spellcheckValue}
+          ref={textareaRef} value={content} onInput={handleContentInput} />
+        <div className="notes-editor-live-rendered notes-editor-rendered"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: false, hasClickableTasks: false }) }}
+          aria-hidden="true" />
+      </div>
     );
   }
 
@@ -434,6 +449,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       return;
     }
 
+    contentValueRef.current = newContent;
     setContent(newContent);
 
     if (isNewNote === true) {
