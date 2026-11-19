@@ -30,6 +30,7 @@ import useNewNoteTag from "./useNewNoteTag.js";
 import SpellcheckPreferences from "../../commons/preferences/SpellcheckPreferences.js";
 import "./NotesEditor.css";
 import { SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
+import EditorModePreferences from "../../commons/preferences/EditorModePreferences.js";
 
 export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose }) {
   const { selectedNote, setSelectedNote, handleNoteChange, handlePinToggle } = useNotes();
@@ -44,6 +45,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [editorMode, setEditorMode] = useState(() => EditorModePreferences.getMode());
 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
@@ -213,6 +215,44 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     setContent(e.target.value);
     handleTextAreaHeight();
     scheduleAutoSave();
+  }
+
+  function handleModeChange(nextMode) {
+    setEditorMode(nextMode);
+    EditorModePreferences.setMode(nextMode);
+  }
+
+  function handleWysiwygInput(e) {
+    const nextMarkdown = htmlToMarkdown(e.currentTarget);
+    setContent(nextMarkdown);
+    scheduleAutoSave();
+  }
+
+  function renderEditableContent() {
+    if (editorMode === "markdown") {
+      return (
+        <textarea className="notes-editor-textarea" placeholder="Write here..." spellCheck={spellcheckValue}
+          ref={textareaRef} value={content} onInput={handleContentInput} />
+      );
+    }
+
+    if (editorMode === "split") {
+      return (
+        <div className="notes-editor-split-view">
+          <textarea className="notes-editor-textarea notes-editor-split-source" placeholder="Write Markdown here..."
+            spellCheck={spellcheckValue} ref={textareaRef} value={content} onInput={handleContentInput} />
+          <div className="notes-editor-rendered notes-editor-split-preview"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: true, hasClickableTasks: false }) }}
+            onClick={handleRenderedContentClick} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="notes-editor-wysiwyg notes-editor-rendered" contentEditable suppressContentEditableWarning
+        spellCheck={spellcheckValue} onInput={handleWysiwygInput}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: false, hasClickableTasks: false }) }} />
+    );
   }
 
   function handleTextAreaHeight() {
@@ -485,16 +525,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const spellcheckValue = SpellcheckPreferences.isEnabled() ? "true" : "false";
 
   if (isEditable) {
-    contentArea = (
-      <textarea
-        className="notes-editor-textarea"
-        placeholder="Write here..."
-        spellCheck={spellcheckValue}
-        ref={textareaRef}
-        value={content}
-        onInput={handleContentInput}
-      />
-    );
+    contentArea = renderEditableContent();
   } else if (title === "" && content === "") {
     contentArea = (
       <div className="notes-editor-empty-text">Empty note</div>
@@ -573,7 +604,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       {imageDropzone}
       {imageAttachmentPreview}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} />
+      {isEditable && <EditorModeSwitcher mode={editorMode} onChange={handleModeChange} />}
+      {isEditable && editorMode !== "wysiwyg" && <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} />}
       <div className="notes-editor-content">
         {contentArea}
       </div>
@@ -664,3 +696,66 @@ function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpand
 }
 
 
+
+
+function EditorModeSwitcher({ mode, onChange }) {
+  const modes = [
+    { id: "live", label: "Live Preview" },
+    { id: "split", label: "Split View" },
+    { id: "markdown", label: "Markdown" },
+    { id: "wysiwyg", label: "WYSIWYG" }
+  ];
+  return (
+    <div className="notes-editor-mode-switcher" role="group" aria-label="Editor mode">
+      {modes.map(item => (
+        <button type="button" key={item.id}
+          className={`notes-editor-mode-button ${mode === item.id ? "is-active" : ""}`}
+          aria-pressed={mode === item.id} onClick={() => onChange(item.id)}>{item.label}</button>
+      ))}
+    </div>
+  );
+}
+
+function htmlToMarkdown(root) {
+  const inline = node => {
+    if (node.nodeType === Node.TEXT_NODE) return node.nodeValue;
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const tag = node.tagName.toLowerCase();
+    const children = Array.from(node.childNodes).map(inline).join("");
+    if (tag === "strong" || tag === "b") return `**${children}**`;
+    if (tag === "em" || tag === "i") return `*${children}*`;
+    if (tag === "s" || tag === "del" || tag === "strike") return `~~${children}~~`;
+    if (tag === "code" && node.parentElement?.tagName !== "PRE") return "`" + children + "`";
+    if (tag === "a") return `[${children}](${node.getAttribute("href") || ""})`;
+    if (tag === "br") return "\\n";
+    if (tag === "img") return `![${node.getAttribute("alt") || ""}](${node.getAttribute("src") || ""})`;
+    return children;
+  };
+  const block = node => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return inline(node);
+    const tag = node.tagName.toLowerCase();
+    if (/^h[1-6]$/.test(tag)) return "\\n" + "#".repeat(Number(tag[1])) + " " + inline(node) + "\\n";
+    if (tag === "p" || tag === "div") return "\\n" + Array.from(node.childNodes).map(block).join("") + "\\n";
+    if (tag === "blockquote") return "\\n" + inline(node).split("\\n").map(line => "> " + line).join("\\n") + "\\n";
+    if (tag === "ul" || tag === "ol") {
+      const items = Array.from(node.children).filter(child => child.tagName.toLowerCase() === "li");
+      return "\\n" + items.map((item, index) => {
+        const checkbox = item.querySelector(":scope > input[type=checkbox]");
+        const prefix = checkbox ? (checkbox.checked ? "- [x] " : "- [ ] ") : (tag === "ol" ? (index + 1) + ". " : "- ");
+        return prefix + Array.from(item.childNodes).filter(child => child.tagName?.toLowerCase() !== "ul" && child.tagName?.toLowerCase() !== "ol").map(inline).join("").trim();
+      }).join("\\n") + "\\n";
+    }
+    if (tag === "pre") return "\\n```\\n" + node.textContent.replace(/\\n+$/, "") + "\\n```\\n";
+    if (tag === "hr") return "\\n---\\n";
+    if (tag === "table") {
+      const rows = Array.from(node.querySelectorAll("tr"));
+      if (!rows.length) return "";
+      const cells = row => Array.from(row.children).map(cell => inline(cell).replace(/\\|/g, "\\\\|").trim());
+      const header = cells(rows[0]);
+      return "\\n| " + header.join(" | ") + " |\\n| " + header.map(() => "---").join(" | ") + " |\\n" +
+        rows.slice(1).map(row => "| " + cells(row).join(" | ") + " |").join("\\n") + "\\n";
+    }
+    return Array.from(node.childNodes).map(block).join("");
+  };
+  return Array.from(root.cloneNode(true).childNodes).map(block).join("").replace(/\\n{3,}/g, "\\n\\n").trim();
+}
