@@ -11,7 +11,9 @@ const COMMANDS = [
   { label: "H3", title: "Heading 3", command: "formatBlock", value: "h3" },
   { label: "•", title: "Bullet list", command: "insertUnorderedList" },
   { label: "1.", title: "Numbered list", command: "insertOrderedList" },
-  { label: "❞", title: "Block quote", command: "formatBlock", value: "blockquote" }
+  { label: "❞", title: "Block quote", command: "formatBlock", value: "blockquote" },
+  { label: "</>", title: "Code block", command: "formatBlock", value: "pre" },
+  { label: "—", title: "Horizontal rule", command: "insertHorizontalRule" }
 ];
 
 export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef }) {
@@ -51,6 +53,14 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
     if (url) handleCommand("createLink", url);
   }
 
+  function handleInsertTable() {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    const table = "<table><tbody><tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Cell</td><td>Cell</td></tr></tbody></table><p><br></p>";
+    document.execCommand("insertHTML", false, table);
+    handleInput({ currentTarget: editorRef.current });
+  }
+
   function handleToolbarMouseDown(event) {
     event.preventDefault();
   }
@@ -75,6 +85,10 @@ export default function WysiwygEditor({ value, onChange, spellCheck, onEditorRef
             {item.label}
           </button>
         ))}
+        <button type="button" title="Insert table" aria-label="Insert table"
+          onMouseDown={handleToolbarMouseDown} onClick={handleInsertTable}>
+          Table
+        </button>
         <button
           type="button"
           title="Insert link"
