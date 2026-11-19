@@ -4,23 +4,22 @@ import AutoSavePreferences from '../../commons/preferences/AutoSavePreferences.j
 
 const AUTO_SAVE_DELAY = 2000;
 
-export default function useAutoSave({ isNewNote, noteId, titleRef, textareaRef, tagsRef }) {
+export default function useAutoSave({ isNewNote, noteId, titleRef, textareaRef, tagsRef, contentRef }) {
   function save() {
-    if (isNewNote || noteId === undefined) {
+    if (isNewNote || noteId === undefined || AutoSavePreferences.isEnabled() === false) {
       return;
     }
 
-    if (AutoSavePreferences.isEnabled() === false) {
+    if (titleRef.current === null) {
       return;
     }
 
-    if (titleRef.current === null || textareaRef.current === null) {
-      return;
-    }
+    const content = contentRef?.current ??
+      (textareaRef.current === null ? "" : textareaRef.current.value);
 
     const note = {
       title: titleRef.current.textContent,
-      content: textareaRef.current.value,
+      content,
       tags: tagsRef.current || [],
     };
 

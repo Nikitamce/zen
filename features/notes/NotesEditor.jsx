@@ -30,6 +30,8 @@ import useNewNoteTag from "./useNewNoteTag.js";
 import SpellcheckPreferences from "../../commons/preferences/SpellcheckPreferences.js";
 import "./NotesEditor.css";
 import { SidebarCloseIcon, SidebarOpenIcon, BackIcon } from "../../commons/components/Icon.jsx";
+import EditorModePreferences from "../../commons/preferences/EditorModePreferences.js";
+import WysiwygEditor from "./WysiwygEditor.jsx";
 
 export default function NotesEditor({ isNewNote, isModal, isExpandable = false, onClose }) {
   const { selectedNote, setSelectedNote, handleNoteChange, handlePinToggle } = useNotes();
@@ -44,17 +46,23 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const [content, setContent] = useState(selectedNote?.content || "");
   const [tags, setTags] = useState(selectedNote?.tags || []);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [editorMode, setEditorMode] = useState(() => EditorModePreferences.getMode());
 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
   const contentRef = useRef(null);
   const editorRef = useRef(null);
+  const contentValueRef = useRef(content);
+  const wysiwygRef = useRef(null);
+  contentValueRef.current = content;
 
   const visibleHeadings = useVisibleHeadings(contentRef, content, isEditable, isEditorExpanded);
   const { handleHeadingClick } = useCollapsibleHeadings(contentRef, selectedNote?.noteId);
 
   const { insertAtCursor, applyMarkdownFormat } = useMarkdownFormatter({
     textareaRef,
+    wysiwygRef,
+    contentRef: contentValueRef,
     setContent
   });
 
@@ -65,6 +73,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function replaceNote(newNote) {
     setTitle(newNote.title);
+    contentValueRef.current = newNote.content;
     setContent(newNote.content);
     setTags(newNote.tags || []);
     setSelectedNote(newNote);
@@ -82,7 +91,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     noteId: selectedNote?.noteId,
     titleRef,
     textareaRef,
-    tagsRef
+    tagsRef,
+    contentRef: contentValueRef
   });
 
   useRefreshOnTabFocus({
@@ -130,11 +140,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   useEffect(() => {
     handleTextAreaHeight();
-  }, [content, isEditable]);
+  }, [content, isEditable, editorMode]);
 
   const handleSaveClick = useCallback(() => {
     const currentTitle = titleRef.current?.textContent || "";
-    const currentContent = textareaRef.current?.value || content;
+    const currentContent = contentValueRef.current;
 
     const note = {
       title: currentTitle,
@@ -203,16 +213,97 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
     function handleConfirm(tableMarkdown) {
       closeModal();
-      setContent(beforeText + tableMarkdown + afterText);
+      const nextContent = beforeText + tableMarkdown + afterText;
+      contentValueRef.current = nextContent;
+      setContent(nextContent);
+      scheduleAutoSave();
     }
 
     openModal(<TableEditorModal isEditing={isEditing} selectedText={selectedText} beforeText={beforeText} afterText={afterText} onConfirm={handleConfirm} onCloseClick={() => closeModal()} />);
   }
 
   function handleContentInput(e) {
+    contentValueRef.current = e.target.value;
     setContent(e.target.value);
     handleTextAreaHeight();
     scheduleAutoSave();
+  }
+
+  function syncEditorScroll(source, target) {
+    if (!source || !target) return;
+    const sourceRange = source.scrollHeight - source.clientHeight;
+    const targetRange = target.scrollHeight - target.clientHeight;
+    if (sourceRange <= 0 || targetRange <= 0) return;
+    target.scrollTop = (source.scrollTop / sourceRange) * targetRange;
+  }
+
+  function handleSplitSourceScroll(event) {
+    syncEditorScroll(event.currentTarget, contentRef.current);
+  }
+
+  function handleSplitPreviewScroll(event) {
+    syncEditorScroll(event.currentTarget, textareaRef.current);
+  }
+
+  function handleModeChange(nextMode) {
+    const latestContent = textareaRef.current?.value ?? contentValueRef.current;
+    contentValueRef.current = latestContent;
+    setContent(latestContent);
+    setEditorMode(nextMode);
+    EditorModePreferences.setMode(nextMode);
+  }
+
+  function handleWysiwygChange(nextMarkdown) {
+    contentValueRef.current = nextMarkdown;
+    setContent(nextMarkdown);
+    scheduleAutoSave();
+  }
+
+  function renderEditableContent() {
+    if (editorMode === "markdown") {
+      return (
+        <textarea className="notes-editor-textarea" placeholder="Write here..." spellCheck={spellcheckValue}
+          ref={textareaRef} value={content} onInput={handleContentInput} />
+      );
+    }
+
+    if (editorMode === "split") {
+      return (
+        <div className="notes-editor-split-view">
+          <textarea className="notes-editor-textarea notes-editor-split-source" placeholder="Write Markdown here..."
+            spellCheck={spellcheckValue} ref={textareaRef} value={content} onInput={handleContentInput}
+            onScroll={handleSplitSourceScroll} />
+          <div className="notes-editor-rendered notes-editor-split-preview" ref={contentRef}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: true, hasClickableTasks: selectedNote?.isDeleted !== true }) }}
+            onClick={handleRenderedContentClick} onScroll={handleSplitPreviewScroll} />
+        </div>
+      );
+    }
+
+    if (editorMode === "wysiwyg") {
+      return (
+        <WysiwygEditor
+          value={content}
+          spellCheck={spellcheckValue}
+          onChange={handleWysiwygChange}
+          onEditorRef={element => { wysiwygRef.current = element; }}
+        />
+      );
+    }
+
+    return (
+      <div className="notes-editor-live-preview">
+        <textarea className="notes-editor-textarea notes-editor-live-source" placeholder="Write Markdown here..."
+          spellCheck={spellcheckValue} ref={textareaRef} value={content} onInput={handleContentInput}
+          aria-label="Markdown source" />
+        <div
+          className="notes-editor-live-rendered notes-editor-rendered"
+          ref={contentRef}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: true, hasClickableTasks: selectedNote?.isDeleted !== true }) }}
+          onClick={handleRenderedContentClick}
+        />
+      </div>
+    );
   }
 
   function handleTextAreaHeight() {
@@ -248,6 +339,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     } else {
       // Reset current edits
       setTitle(selectedNote?.title || "");
+      contentValueRef.current = selectedNote?.content || "";
       setContent(selectedNote?.content || "");
       setTags(selectedNote?.tags || []);
       setIsEditable(false);
@@ -334,7 +426,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
 
   function buildNoteMarkdown() {
     const currentTitle = titleRef.current?.textContent || "";
-    const currentContent = textareaRef.current?.value || content;
+    const currentContent = contentValueRef.current;
 
     if (currentTitle.trim() === "") {
       return currentContent;
@@ -387,6 +479,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       return;
     }
 
+    contentValueRef.current = newContent;
     setContent(newContent);
 
     if (isNewNote === true) {
@@ -466,6 +559,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       setTitle(templateTitle);
     }
 
+    contentValueRef.current = templateContent;
     setContent(templateContent);
 
     if (templateTags && templateTags.length > 0) {
@@ -478,6 +572,17 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
         const length = templateContent.length;
         textareaRef.current.selectionStart = length;
         textareaRef.current.selectionEnd = length;
+        return;
+      }
+
+      if (wysiwygRef.current) {
+        wysiwygRef.current.focus();
+        const range = document.createRange();
+        range.selectNodeContents(wysiwygRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
       }
     }, 0);
   }
@@ -485,16 +590,7 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
   const spellcheckValue = SpellcheckPreferences.isEnabled() ? "true" : "false";
 
   if (isEditable) {
-    contentArea = (
-      <textarea
-        className="notes-editor-textarea"
-        placeholder="Write here..."
-        spellCheck={spellcheckValue}
-        ref={textareaRef}
-        value={content}
-        onInput={handleContentInput}
-      />
-    );
+    contentArea = renderEditableContent();
   } else if (title === "" && content === "") {
     contentArea = (
       <div className="notes-editor-empty-text">Empty note</div>
@@ -573,7 +669,8 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       <NotesEditorTags tags={tags} isEditable={isEditable} canCreateTag onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
       {imageDropzone}
       {imageAttachmentPreview}
-      <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} />
+      {isEditable && <EditorModeSwitcher mode={editorMode} onChange={handleModeChange} />}
+      {isEditable && editorMode !== "wysiwyg" && <NotesEditorFormattingToolbar isEditable={isEditable} onFormat={handleEditorActions} />}
       <div className="notes-editor-content">
         {contentArea}
       </div>
@@ -663,4 +760,24 @@ function Toolbar({ note, isNewNote, isEditable, isModal, isSaveLoading, isExpand
   );
 }
 
+
+
+
+function EditorModeSwitcher({ mode, onChange }) {
+  const modes = [
+    { id: "live", label: "Live Preview" },
+    { id: "split", label: "Split View" },
+    { id: "markdown", label: "Markdown" },
+    { id: "wysiwyg", label: "WYSIWYG" }
+  ];
+  return (
+    <div className="notes-editor-mode-switcher" role="group" aria-label="Editor mode">
+      {modes.map(item => (
+        <button type="button" key={item.id}
+          className={`notes-editor-mode-button ${mode === item.id ? "is-active" : ""}`}
+          aria-pressed={mode === item.id} onClick={() => onChange(item.id)}>{item.label}</button>
+      ))}
+    </div>
+  );
+}
 
