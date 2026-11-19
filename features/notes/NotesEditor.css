@@ -695,14 +695,18 @@
 }
 .notes-editor-split-source {
     min-height: 360px;
+    max-height: min(70vh, 800px);
     resize: vertical;
+    overflow: auto;
 }
 .notes-editor-split-preview {
     min-width: 0;
     min-height: 360px;
+    max-height: min(70vh, 800px);
     padding: var(--spacing-4);
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-1);
+    overflow: auto;
 }
 .notes-editor-wysiwyg {
     min-height: 240px;
