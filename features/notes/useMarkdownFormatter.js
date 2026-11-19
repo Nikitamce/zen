@@ -1,4 +1,4 @@
-function useMarkdownFormatter({ textareaRef, setContent }) {
+function useMarkdownFormatter({ textareaRef, setContent, contentRef }) {
   function insertAtCursor(text) {
     if (textareaRef.current === null) {
       return;
@@ -10,7 +10,9 @@ function useMarkdownFormatter({ textareaRef, setContent }) {
     const beforeText = textarea.value.substring(0, startPos);
     const afterText = textarea.value.substring(endPos);
 
-    setContent(beforeText + text + afterText);
+    const nextContent = beforeText + text + afterText;
+    if (contentRef) contentRef.current = nextContent;
+    setContent(nextContent);
 
     // Use setTimeout to ensure cursor position is set after DOM update
     const newPosition = startPos + text.length;
@@ -102,7 +104,9 @@ function useMarkdownFormatter({ textareaRef, setContent }) {
         break;
     }
 
-    setContent(beforeText + formattedText + afterText);
+    const nextContent = beforeText + formattedText + afterText;
+    if (contentRef) contentRef.current = nextContent;
+    setContent(nextContent);
 
     // Set cursor position after content update
     setTimeout(() => {
