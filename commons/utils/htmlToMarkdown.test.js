@@ -125,3 +125,14 @@ test("serializes rendered Markdown tables", () => {
     "| Name | Count |\n| --- | ---: |\n| Alpha | 2 |"
   );
 });
+
+test("escapes Markdown punctuation in literal text", () => {
+  const root = element("div", {}, [
+    element("p", {}, [text("Use * literally, and keep [brackets] and == marks.")])
+  ]);
+
+  assert.equal(
+    htmlToMarkdown(root),
+    "Use \\* literally, and keep \\[brackets\\] and \\=\\= marks\\."
+  );
+});
