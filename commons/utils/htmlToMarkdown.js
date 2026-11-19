@@ -2,15 +2,23 @@ function getElementChildren(node, selector) {
   return Array.from(node.querySelectorAll(selector));
 }
 
+function escapeMarkdownText(value) {
+  return value.replace(/([\\`*_{}\[\]()#+\-.!>~=<])/g, "\\$1");
+}
+
 function serializeInline(node) {
   if (node.nodeType === 3) {
-    return node.nodeValue.replace(/\u00a0/g, " ");
+    return escapeMarkdownText(node.nodeValue.replace(/\u00a0/g, " "));
   }
   if (node.nodeType !== 1) return "";
 
   const tag = node.tagName.toLowerCase();
-  const children = Array.from(node.childNodes).map(serializeInline).join("");
+  if (tag === "code") {
+    if (node.parentElement?.tagName === "PRE") return node.textContent;
+    return wrapInlineCode(node.textContent);
+  }
 
+  const children = Array.from(node.childNodes).map(serializeInline).join("");
   switch (tag) {
     case "strong":
     case "b": return "**" + children + "**";
@@ -20,9 +28,6 @@ function serializeInline(node) {
     case "del":
     case "strike": return "~~" + children + "~~";
     case "mark": return "==" + children + "==";
-    case "code":
-      if (node.parentElement?.tagName === "PRE") return children;
-      return wrapInlineCode(children);
     case "a": {
       const href = node.getAttribute("href") || "";
       return href ? "[" + children + "](" + href + ")" : children;
