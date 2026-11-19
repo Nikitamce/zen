@@ -229,6 +229,22 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
     scheduleAutoSave();
   }
 
+  function syncEditorScroll(source, target) {
+    if (!source || !target) return;
+    const sourceRange = source.scrollHeight - source.clientHeight;
+    const targetRange = target.scrollHeight - target.clientHeight;
+    if (sourceRange <= 0 || targetRange <= 0) return;
+    target.scrollTop = (source.scrollTop / sourceRange) * targetRange;
+  }
+
+  function handleSplitSourceScroll(event) {
+    syncEditorScroll(event.currentTarget, contentRef.current);
+  }
+
+  function handleSplitPreviewScroll(event) {
+    syncEditorScroll(event.currentTarget, textareaRef.current);
+  }
+
   function handleModeChange(nextMode) {
     const latestContent = textareaRef.current?.value ?? contentValueRef.current;
     contentValueRef.current = latestContent;
@@ -255,10 +271,11 @@ export default function NotesEditor({ isNewNote, isModal, isExpandable = false, 
       return (
         <div className="notes-editor-split-view">
           <textarea className="notes-editor-textarea notes-editor-split-source" placeholder="Write Markdown here..."
-            spellCheck={spellcheckValue} ref={textareaRef} value={content} onInput={handleContentInput} />
-          <div className="notes-editor-rendered notes-editor-split-preview"
+            spellCheck={spellcheckValue} ref={textareaRef} value={content} onInput={handleContentInput}
+            onScroll={handleSplitSourceScroll} />
+          <div className="notes-editor-rendered notes-editor-split-preview" ref={contentRef}
             dangerouslySetInnerHTML={{ __html: renderMarkdown(content, { hasCodeCopyButton: true, hasClickableTasks: selectedNote?.isDeleted !== true }) }}
-            onClick={handleRenderedContentClick} />
+            onClick={handleRenderedContentClick} onScroll={handleSplitPreviewScroll} />
         </div>
       );
     }
